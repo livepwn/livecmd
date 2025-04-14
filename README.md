@@ -35,32 +35,32 @@
 #### Show recent commands grouped by first letter:
 
 
-``cmdhist``
+``livecmd``
 
 #### Show all commands starting with 'g':
 
 
-``cmdhist g``
+``livecmd g``
 
 #### Show all commands starting with 'git':
 
 
-``cmdhist git``
+``livecmd git``
 
 #### Show 20 most frequent commands:
 
 
-``cmdhist -f``
+``livecmd -f``
 
 #### Show recent commands with timestamps:
 
 
-``cmdhist -t``
+``livecmd -t``
 
 #### Show full command history:
 
 
-``cmdhist -a``
+``livecmd -a``
 
 ## Configuration
 - You can customize the tool by modifying these variables at the top of the script:
