@@ -1,0 +1,130 @@
+#!/bin/bash
+
+# cmdhist - Enhanced Command History Tool
+# Version 1.0
+# Author: Your Name
+
+# Configuration
+HISTORY_FILE="${HOME}/.bash_history"
+HISTORY_LENGTH=1000
+COLOR_HEADER="\033[1;36m"       # Cyan
+COLOR_COMMAND="\033[1;33m"      # Yellow
+COLOR_COUNT="\033[1;35m"        # Purple
+COLOR_TIME="\033[0;37m"         # Light Gray
+COLOR_NORMAL="\033[0m"          # Reset
+
+# Function to display help
+show_help() {
+    echo "Usage: cmdhist [OPTIONS] [SEARCH]"
+    echo "Enhanced command history viewer"
+    echo ""
+    echo "Options:"
+    echo "  -a, --all       Show full command history (default shows 1000)"
+    echo "  -t, --time      Show commands with timestamps"
+    echo "  -f, --frequent  Show most frequent commands"
+    echo "  -r, --recent    Show recent commands (default)"
+    echo "  -h, --help      Show this help message"
+    echo ""
+    echo "Search:"
+    echo "  You can provide starting letters to filter commands"
+    echo "  Example: cmdhist g   # Shows commands starting with 'g'"
+    echo "           cmdhist git # Shows commands starting with 'git'"
+    exit 0
+}
+
+# Function to process and display history
+display_history() {
+    local pattern="$1"
+    local show_time=$2
+    local show_frequent=$3
+    
+    # Get history, remove line numbers, and filter
+    local history_commands
+    if [ "$show_all" = true ]; then
+        history_commands=$(cat "$HISTORY_FILE")
+    else
+        history_commands=$(tail -n "$HISTORY_LENGTH" "$HISTORY_FILE")
+    fi
+    
+    if [ "$show_frequent" = true ]; then
+        # Show frequent commands
+        echo -e "${COLOR_HEADER}Most frequent commands:${COLOR_NORMAL}"
+        echo "$history_commands" | sort | uniq -c | sort -nr | head -n 20 | \
+        while read -r line; do
+            count=$(echo "$line" | awk '{print $1}')
+            cmd=$(echo "$line" | cut -d' ' -f2-)
+            printf "${COLOR_COUNT}%5s${COLOR_NORMAL} ${COLOR_COMMAND}%s${COLOR_NORMAL}\n" "$count" "$cmd"
+        done
+    elif [ -n "$pattern" ]; then
+        # Show commands starting with pattern
+        echo -e "${COLOR_HEADER}Commands starting with '${pattern}':${COLOR_NORMAL}"
+        grep "^${pattern}" <<< "$history_commands" | sort -u | \
+        while read -r cmd; do
+            echo -e "  ${COLOR_COMMAND}${cmd}${COLOR_NORMAL}"
+        done
+    elif [ "$show_time" = true ]; then
+        # Show commands with timestamps (requires HISTTIMEFORMAT set in bash)
+        echo -e "${COLOR_HEADER}Recent commands with timestamps:${COLOR_NORMAL}"
+        history 20 | \
+        while read -r line; do
+            num=$(echo "$line" | awk '{print $1}')
+            time_part=$(echo "$line" | grep -oP '#\d+')
+            if [ -n "$time_part" ]; then
+                timestamp=$(date -d "@${time_part:1}" "+%Y-%m-%d %H:%M:%S")
+                cmd=$(echo "$line" | cut -d' ' -f3-)
+                echo -e "${COLOR_TIME}[${timestamp}]${COLOR_NORMAL} ${COLOR_COMMAND}${cmd}${COLOR_NORMAL}"
+            else
+                cmd=$(echo "$line" | cut -d' ' -f2-)
+                echo -e "${COLOR_TIME}[no timestamp]${COLOR_NORMAL} ${COLOR_COMMAND}${cmd}${COLOR_NORMAL}"
+            fi
+        done
+    else
+        # Show recent commands grouped by first letter
+        echo -e "${COLOR_HEADER}Recent commands grouped by first letter:${COLOR_NORMAL}"
+        echo "$history_commands" | awk '{print substr($0,1,1), $0}' | sort -u | \
+        awk '{
+            if ($1 != prev) {
+                printf "\n'${COLOR_HEADER}'%s'${COLOR_NORMAL}'\n", $1;
+                prev=$1
+            }
+            printf "  '${COLOR_COMMAND}'%s'${COLOR_NORMAL}'\n", substr($0,3)
+        }'
+    fi
+}
+
+# Parse arguments
+show_all=false
+show_time=false
+show_frequent=false
+pattern=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -a|--all)
+            show_all=true
+            shift
+            ;;
+        -t|--time)
+            show_time=true
+            shift
+            ;;
+        -f|--frequent)
+            show_frequent=true
+            shift
+            ;;
+        -r|--recent)
+            # Default behavior
+            shift
+            ;;
+        -h|--help)
+            show_help
+            ;;
+        *)
+            pattern="$1"
+            shift
+            ;;
+    esac
+done
+
+# Main execution
+display_history "$pattern" "$show_time" "$show_frequent"
